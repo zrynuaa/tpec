@@ -2,9 +2,6 @@
 
 This package contains:
  - An implementation of [Fast Secure Two-Party ECDSA Signing](https://eprint.iacr.org/2017/552.pdf), supporting key generation and two-party signing.
- - An implementation of 2P-ECDSA Adaptor Signatures detailed in [Multi-Hop Locks for Secure, Privacy-Preserving and Interoperable Payment-Channel Networks](https://eprint.iacr.org/2018/472.pdf).
-   - [x] Single Hop
-   - [ ] Multi-Hop (coming soon)
    
 
 Prerequisites
@@ -50,7 +47,6 @@ go test -v -bench=. -benchtime=30s
 |-------------------------|---------|--------|-------------|
 | BenchmarkKeyGen         | 599ms   | 6.46MB | 12176       |
 | BenchmarkSign           | 17.8ms  | 122KB  | 717         |
-| BenchmarkScriptlessSign | 18.8ms  | 142KB  | 1074        |
 
 
 Results computed on 2.8 GHz Intel Core i7 16 GB 2133 MHz LPDDR3

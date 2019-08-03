@@ -2,6 +2,7 @@ package tpec
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
 	"io"
 	"math/big"
@@ -16,32 +17,28 @@ var (
 	ErrInvalidProofPair = errors.New("cannot prove for invalid proof pair")
 )
 
-func NewRangeProofVerifier(
-	q3 *big.Int,
-	accuracy int) (*RangeProofVerifier, error) {
+func NewRangeProofVerifier(q3 *big.Int, accuracy int) (*RangeProofVerifier, error) {
 
-	challenge, err := randBitSlice(accuracy)
-	if err != nil {
-		return nil, err
-	}
+	//challenge, err := randBitSlice(accuracy)
+	//if err != nil {
+	//	return nil, err
+	//}
 
-	comm, nonce, err := Commit(challenge)
-	if err != nil {
-		return nil, err
-	}
+	//comm, nonce, err := Commit(challenge)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	return &RangeProofVerifier{
-		Q3:        q3,
-		Challenge: challenge,
-		Comm:      comm,
-		Nonce:     nonce,
-		Accuracy:  accuracy,
+		Q3: q3,
+		//Challenge: challenge,
+		//Comm:      comm,
+		//Nonce:     nonce,
+		Accuracy: accuracy,
 	}, nil
 }
 
-func (p *RangeProofVerifier) ReceiveCtxt(
-	c *big.Int,
-	ppk *paillier.PublicKey,
+func (p *RangeProofVerifier) ReceiveCtxt(c *big.Int, ppk *paillier.PublicKey,
 	ctxtPairs []CiphertextPair) {
 
 	p.C = c
@@ -55,9 +52,9 @@ type RangeProofVerifier struct {
 	PPK       *paillier.PublicKey
 	Q3        *big.Int
 	Challenge BitSlice
-	Comm      Comm
-	Nonce     Nonce
-	Accuracy  int
+	//Comm      Comm
+	//Nonce     Nonce
+	Accuracy int
 
 	CtxtPairs []CiphertextPair
 }
@@ -104,14 +101,8 @@ func (b BitSlice) Bit(i int) byte {
 	return (b[byt] >> uint(8-bit)) & 0x01
 }
 
-func NewRangeProofProver(
-	x *big.Int,
-	r *big.Int,
-	q *big.Int,
-	q3 *big.Int,
-	psk *paillier.PrivateKey,
-	comm Comm,
-	accuracy int) (*RangeProofProver, error) {
+func NewRangeProofProver(x *big.Int, r *big.Int, q *big.Int, q3 *big.Int,
+	psk *paillier.PrivateKey, comm Comm, accuracy int) (*RangeProofProver, error) {
 
 	secPairs := NewSecretPairs(accuracy)
 	ctxtPairs := NewCiphertextPairs(accuracy)
@@ -237,11 +228,12 @@ type RangeProof struct {
 	ProofPairs []ProofPair
 }
 
-func (p *RangeProofProver) Prove(challenge BitSlice, nonce *Nonce) ([]ProofPair, error) {
-	err := p.ChallengeComm.Verify(challenge, nonce)
-	if err != nil {
-		return nil, err
-	}
+func (p *RangeProofProver) Prove() ([]ProofPair, error) {
+	//err := p.ChallengeComm.Verify(challenge, nonce)
+	//if err != nil {
+	//	return nil, err
+	//}
+	var challenge BitSlice = getChallengeFromCtx(p.CtxtPairs, p.Accuracy)
 
 	proofPairs := NewProofPairs(p.Accuracy)
 
@@ -269,8 +261,7 @@ func (p *RangeProofProver) Prove(challenge BitSlice, nonce *Nonce) ([]ProofPair,
 	return proofPairs, nil
 }
 
-func (p *RangeProofProver) proveInstance(
-	i int, ei byte, proofPairs []ProofPair) error {
+func (p *RangeProofProver) proveInstance(i int, ei byte, proofPairs []ProofPair) error {
 
 	lower := p.Q3
 	upper := new(big.Int).Add(p.Q3, p.Q3)
@@ -352,6 +343,23 @@ func (p *RangeProofVerifier) Verify(proofPairs []ProofPair) error {
 
 	return nil
 }
+func getChallengeFromCtx(ctxtPairs []CiphertextPair, accuracy int) []byte {
+	h := sha256.New()
+	for _, ctxtPair := range ctxtPairs {
+		h.Write(ctxtPair.C1.Bytes())
+		h.Write(ctxtPair.C2.Bytes())
+	}
+	challenge := h.Sum(nil)
+
+	nbytes := (accuracy + 7) / 8
+	for {
+		if len(challenge) >= nbytes {
+			return challenge[:nbytes]
+		}
+		challengeHash := sha256.Sum256(challenge)
+		challenge = append(challenge, challengeHash[:]...)
+	}
+}
 
 func (p *RangeProofVerifier) verifyInstance(
 	i int, proofPair *ProofPair) error {
@@ -360,6 +368,8 @@ func (p *RangeProofVerifier) verifyInstance(
 	upper := new(big.Int).Add(p.Q3, p.Q3)
 
 	ctxtPair := p.CtxtPairs[i]
+
+	p.Challenge = getChallengeFromCtx(p.CtxtPairs, p.Accuracy)
 
 	ei := p.Challenge.Bit(i)
 	switch {

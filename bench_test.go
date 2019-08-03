@@ -33,7 +33,7 @@ func newConfig() *tpec.Config {
 		QSquared:       qSquared,
 		NPaillierBits:  2048,
 		NthRootSecBits: 128,
-		RangeSecBits:   40,
+		RangeSecBits:   40, //more larger more security
 	}
 }
 

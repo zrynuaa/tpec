@@ -164,8 +164,7 @@ func (p *Party2) KeyGenPhase2(
 	p.RPVerifier = rpVerifier
 
 	return &KeyGenMsg2{
-		X2PoK:      X2PoK,
-		RPChalComm: p.RPVerifier.Comm,
+		X2PoK: X2PoK,
 	}, nil
 }
 
@@ -207,10 +206,8 @@ func (p *Party1) KeyGenPhase3(
 	}
 
 	x1 := new(big.Int).SetBytes(p.x1[:])
-	rpProver, err := NewRangeProofProver(
-		x1, ckeyNonce, p.cfg.Q, p.cfg.Q3, psk, m2.RPChalComm,
-		p.cfg.RangeSecBits,
-	)
+	rpProver, err := NewRangeProofProver(x1, ckeyNonce, p.cfg.Q, p.cfg.Q3, psk,
+		m2.RPChalComm, p.cfg.RangeSecBits)
 	if err != nil {
 		return nil, err
 	}
@@ -231,15 +228,13 @@ func (p *Party1) KeyGenPhase3(
 }
 
 type KeyGenMsg4 struct {
-	RPChallenge BitSlice
-	RPChalNonce Nonce
-	CPrime      *big.Int
-	ABComm      Comm
+	//RPChalNonce Nonce
+	//RPChallenge BitSlice
+	CPrime *big.Int
+	ABComm Comm
 }
 
-func (p *Party2) KeyGenPhase4(
-	sid uint64,
-	m3 *KeyGenMsg3) (*KeyGenMsg4, error) {
+func (p *Party2) KeyGenPhase4(sid uint64, m3 *KeyGenMsg3) (*KeyGenMsg4, error) {
 
 	err := p.X1PoKComm.Verify(m3.X1PoK.Bytes(), &m3.X1PoKNonce)
 	if err != nil {
@@ -306,10 +301,10 @@ func (p *Party2) KeyGenPhase4(
 	p.ABNonce = abNonce
 
 	return &KeyGenMsg4{
-		RPChallenge: p.RPVerifier.Challenge,
-		RPChalNonce: p.RPVerifier.Nonce,
-		CPrime:      cPrime,
-		ABComm:      abComm,
+		//RPChallenge: p.RPVerifier.Challenge,
+		//RPChalNonce: p.RPVerifier.Nonce,
+		CPrime: cPrime,
+		ABComm: abComm,
 	}, nil
 }
 
@@ -322,7 +317,7 @@ func (p *Party1) KeyGenPhase5(
 	sid uint64,
 	m4 *KeyGenMsg4) (*KeyGenMsg5, error) {
 
-	proofPairs, err := p.RPProver.Prove(m4.RPChallenge, &m4.RPChalNonce)
+	proofPairs, err := p.RPProver.Prove()
 	if err != nil {
 		return nil, err
 	}
