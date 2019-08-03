@@ -7,7 +7,7 @@ import (
 	"math/big"
 	"sync"
 
-	paillier "github.com/roasbeef/go-go-gadget-paillier"
+	paillier "github.com/zrynuaa/go-go-gadget-paillier"
 )
 
 var (

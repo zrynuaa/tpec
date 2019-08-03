@@ -7,7 +7,7 @@ import (
 
 	"github.com/NebulousLabs/hdkey/eckey"
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/roasbeef/go-go-gadget-paillier"
+	"github.com/zrynuaa/go-go-gadget-paillier"
 )
 
 var (

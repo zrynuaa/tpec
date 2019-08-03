@@ -8,8 +8,9 @@ import (
 
 	"github.com/NebulousLabs/hdkey/eckey"
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/cfromknecht/tpec"
-	paillier "github.com/roasbeef/go-go-gadget-paillier"
+	"github.com/zrynuaa/Go-secp256k1/secpk1"
+	paillier "github.com/zrynuaa/go-go-gadget-paillier"
+	"github.com/zrynuaa/tpec"
 )
 
 var (
@@ -21,7 +22,7 @@ var (
 )
 
 func newConfig() *tpec.Config {
-	params := btcec.S256().CurveParams
+	params := secpk1.S256().Params()
 	q := new(big.Int).Set(params.N)
 	q3 := new(big.Int).Div(q, big.NewInt(3))
 	qSquared := new(big.Int).Mul(q, q)
@@ -100,45 +101,6 @@ func TestSign(t *testing.T) {
 	}
 }
 
-func TestScriptlessSign(t *testing.T) {
-	cfg := newConfig()
-
-	r, err := tpec.NewPrivKey(cfg.Q)
-	if err != nil {
-		t.Fatalf("unable to generate secret: %v", err)
-	}
-
-	var p1 = tpec.NewParty1(cfg)
-	var p2 = tpec.NewParty2(cfg)
-
-	sk1, err = p1.GenKey(p2, nil, nil)
-	if err != nil {
-		t.Fatalf("unable to generate keys: %v", err)
-	}
-
-	sk2, err = p2.PrivateKey()
-	if err != nil {
-		t.Fatalf("unable to get p2 privkey: %v", err)
-	}
-
-	msg := []byte("hello 2pecdsa")
-	digest := sha256.Sum256(msg)
-
-	sig, rr, err := sk1.ScriptlessSign(digest[:], r, sk2)
-	if err != nil {
-		t.Fatalf("unable to sign msg: %v", err)
-	}
-
-	if !sig.Verify(digest[:], sk1.PublicKey) {
-		t.Fatalf("invalid 2P-ECDSA signature")
-	}
-
-	if !bytes.Equal(r[:], rr[:]) {
-		t.Fatalf("extracted secret does not match original, "+
-			"original=%x extracted=%x", r, rr)
-	}
-}
-
 func BenchmarkKeyGen(b *testing.B) {
 	cfg := newConfig()
 
@@ -180,41 +142,6 @@ func BenchmarkSign(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		sig, err = sk1.Sign(digest[:], sk2)
-		if err != nil {
-			b.Fatalf("unable to sign msg: %v", err)
-		}
-	}
-}
-
-func BenchmarkScriptlessSign(b *testing.B) {
-	cfg := newConfig()
-
-	t, err := tpec.NewPrivKey(cfg.Q)
-	if err != nil {
-		b.Fatalf("unable to generate secret: %v", err)
-	}
-
-	var p1 = tpec.NewParty1(cfg)
-	var p2 = tpec.NewParty2(cfg)
-
-	sk1, err = p1.GenKey(p2, nil, nil)
-	if err != nil {
-		b.Fatalf("unable to generate keys: %v", err)
-	}
-
-	sk2, err = p2.PrivateKey()
-	if err != nil {
-		b.Fatalf("unable to get p2 privkey: %v", err)
-	}
-
-	msg := []byte("hello 2pecdsa")
-	digest := sha256.Sum256(msg)
-
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		sig, tt, err = sk1.ScriptlessSign(digest[:], t, sk2)
 		if err != nil {
 			b.Fatalf("unable to sign msg: %v", err)
 		}

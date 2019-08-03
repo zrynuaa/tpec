@@ -11,7 +11,7 @@ import (
 
 	"github.com/NebulousLabs/hdkey/eckey"
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/cfromknecht/tpec"
+	"github.com/zrynuaa/tpec"
 )
 
 const (
@@ -156,15 +156,6 @@ func main() {
 
 	switch {
 	case sec != nil:
-		signStart := time.Now()
-		fmt.Printf("SCRIPTLESS SIGN...")
-		sig, sec2, err = sk1.ScriptlessSign(dgst[:], sec, sk2)
-		if err != nil {
-			fail("unable to create 2p-ecdsa signature: %v", err)
-		}
-		fmt.Printf(" DONE: %v\n", time.Since(signStart))
-		fmt.Println()
-
 	default:
 		signStart := time.Now()
 		fmt.Printf("SIGN...")

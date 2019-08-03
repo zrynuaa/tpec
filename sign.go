@@ -7,7 +7,7 @@ import (
 
 	"github.com/NebulousLabs/hdkey/eckey"
 	"github.com/btcsuite/btcd/btcec"
-	paillier "github.com/roasbeef/go-go-gadget-paillier"
+	paillier "github.com/zrynuaa/go-go-gadget-paillier"
 )
 
 var ErrInvalidSignature = errors.New("invalid presignature created")
@@ -27,15 +27,15 @@ type Party1SignCtx struct {
 	R2 *eckey.PublicKey
 }
 
-func (sk *Party1PrivateKey) NewSignCtx(msg []byte) *Party1SignCtx {
+func (sk1 *Party1PrivateKey) NewSignCtx(msg []byte) *Party1SignCtx {
 	return &Party1SignCtx{
 		msg: msg,
-		sk:  sk,
+		sk:  sk1,
 	}
 }
 
-func (c *Party1SignCtx) Zero() {
-	c.k1.Zero()
+func (p *Party1SignCtx) Zero() {
+	p.k1.Zero()
 }
 
 type Party2SignCtx struct {
@@ -60,13 +60,11 @@ func (sk *Party2PrivateKey) NewSignCtx(msg []byte) *Party2SignCtx {
 	}
 }
 
-func (c *Party2SignCtx) Zero() {
-	c.k2.Zero()
+func (p *Party2SignCtx) Zero() {
+	p.k2.Zero()
 }
 
-func (sk1 *Party1PrivateKey) Sign(
-	msg []byte,
-	sk2 *Party2PrivateKey) (*btcec.Signature, error) {
+func (sk1 *Party1PrivateKey) Sign(msg []byte, sk2 *Party2PrivateKey) (*btcec.Signature, error) {
 
 	p1Ctx := sk1.NewSignCtx(msg)
 	defer p1Ctx.Zero()

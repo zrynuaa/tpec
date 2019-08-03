@@ -7,7 +7,7 @@ import (
 	"crypto/sha256"
 	"math/big"
 
-	paillier "github.com/roasbeef/go-go-gadget-paillier"
+	paillier "github.com/zrynuaa/go-go-gadget-paillier"
 )
 
 type PaillierNthRootProof struct {
