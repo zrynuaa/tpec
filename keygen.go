@@ -20,9 +20,7 @@ var (
 	ErrKeyNotGenerated = errors.New("private key has not been generated")
 )
 
-func (p *Party1) GenKey(
-	p2 *Party2,
-	x1, x2 *eckey.SecretKey) (*Party1PrivateKey, error) {
+func (p *Party1) GenKey(p2 *Party2, x1, x2 *eckey.SecretKey) (*Party1PrivateKey, error) {
 
 	p.x1 = x1
 	p2.x2 = x2

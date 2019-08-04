@@ -101,6 +101,61 @@ func TestSign(t *testing.T) {
 	}
 }
 
+func TestRefresh(t *testing.T) {
+	cfg := newConfig()
+
+	var p1 = tpec.NewParty1(cfg)
+	var p2 = tpec.NewParty2(cfg)
+
+	//----------- GenKey -----------
+	sk1, err = p1.GenKey(p2, nil, nil)
+	if err != nil {
+		t.Fatalf("unable to generate keys: %v", err)
+	}
+
+	sk2, err = p2.PrivateKey()
+	if err != nil {
+		t.Fatalf("unable to get p2 privkey: %v", err)
+	}
+
+	////----------- Sign -----------
+	msg := []byte("hello 2pecdsa")
+	digest := sha256.Sum256(msg)
+
+	sig, err = sk1.Sign(digest[:], sk2)
+	if err != nil {
+		t.Fatalf("unable to sign msg: %v", err)
+	}
+
+	if !sig.Verify(digest[:], sk1.PublicKey) {
+		t.Fatalf("invalid 2P-ECDSA signature")
+	}
+
+	//----------- Refresh -----------
+	sk1, err = p1.Refresh(p2)
+	if err != nil {
+		t.Fatalf("unable to generate keys: %v", err)
+	}
+
+	sk2, err = p2.PrivateKey()
+	if err != nil {
+		t.Fatalf("unable to get p2 privkey: %v", err)
+	}
+
+	//----------- Sign -----------
+	msg = []byte("hello 2pecdsa")
+	digest = sha256.Sum256(msg)
+
+	sig, err = sk1.Sign(digest[:], sk2)
+	if err != nil {
+		t.Fatalf("unable to sign msg: %v", err)
+	}
+
+	if !sig.Verify(digest[:], sk1.PublicKey) {
+		t.Fatalf("invalid 2P-ECDSA signature")
+	}
+}
+
 func BenchmarkKeyGen(b *testing.B) {
 	cfg := newConfig()
 
