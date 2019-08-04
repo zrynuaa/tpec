@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
+	"github.com/zrynuaa/Go-secp256k1/secpk1"
 	"math/big"
 
 	"github.com/NebulousLabs/hdkey/eckey"
@@ -85,8 +86,7 @@ type KeyGenMsg1 struct {
 	X1PoKComm Comm
 }
 
-func (p *Party1) KeyGenPhase1(
-	sid uint64) (*KeyGenMsg1, error) {
+func (p *Party1) KeyGenPhase1(sid uint64) (*KeyGenMsg1, error) {
 
 	// TODO(conner): check sid
 
@@ -123,13 +123,10 @@ func (p *Party1) KeyGenPhase1(
 }
 
 type KeyGenMsg2 struct {
-	X2PoK      *DLogPoK
-	RPChalComm Comm
+	X2PoK *DLogPoK
 }
 
-func (p *Party2) KeyGenPhase2(
-	sid uint64,
-	m1 *KeyGenMsg1) (*KeyGenMsg2, error) {
+func (p *Party2) KeyGenPhase2(sid uint64, m1 *KeyGenMsg1) (*KeyGenMsg2, error) {
 
 	// TODO(conner): check sid
 
@@ -169,17 +166,15 @@ func (p *Party2) KeyGenPhase2(
 }
 
 type KeyGenMsg3 struct {
-	X1PoK       *DLogPoK
-	X1PoKNonce  Nonce
-	PProof      *PaillierNthRootProof
-	ckey        []byte
-	RPCtxtPairs []CiphertextPair
+	X1PoK        *DLogPoK
+	X1PoKNonce   Nonce
+	PProof       *PaillierNthRootProof
+	ckey         []byte
+	RPCtxtPairs  []CiphertextPair
+	RPProofPairs []ProofPair
 }
 
-func (p *Party1) KeyGenPhase3(
-	sid uint64,
-	m2 *KeyGenMsg2) (*KeyGenMsg3, error) {
-
+func (p *Party1) KeyGenPhase3(sid uint64, m2 *KeyGenMsg2) (*KeyGenMsg3, error) {
 	err := m2.X2PoK.Verify(keyGenPhase2Msg)
 	if err != nil {
 		return nil, err
@@ -206,8 +201,7 @@ func (p *Party1) KeyGenPhase3(
 	}
 
 	x1 := new(big.Int).SetBytes(p.x1[:])
-	rpProver, err := NewRangeProofProver(x1, ckeyNonce, p.cfg.Q, p.cfg.Q3, psk,
-		m2.RPChalComm, p.cfg.RangeSecBits)
+	rpProver, err := NewRangeProofProver(x1, ckeyNonce, p.cfg.Q, p.cfg.Q3, psk, p.cfg.RangeSecBits)
 	if err != nil {
 		return nil, err
 	}
@@ -218,24 +212,28 @@ func (p *Party1) KeyGenPhase3(
 	p.CKeyNonce = ckeyNonce
 	p.RPProver = rpProver
 
+	proofPairs, err := p.RPProver.Prove()
+	if err != nil {
+		return nil, err
+	}
+
 	return &KeyGenMsg3{
-		X1PoK:       p.X1PoK,
-		X1PoKNonce:  p.X1Nonce,
-		PProof:      proof,
-		ckey:        ckey,
-		RPCtxtPairs: p.RPProver.CtxtPairs,
+		X1PoK:        p.X1PoK,
+		X1PoKNonce:   p.X1Nonce,
+		PProof:       proof,
+		ckey:         ckey,
+		RPCtxtPairs:  p.RPProver.CtxtPairs,
+		RPProofPairs: proofPairs,
 	}, nil
 }
 
 type KeyGenMsg4 struct {
-	//RPChalNonce Nonce
-	//RPChallenge BitSlice
 	CPrime *big.Int
 	ABComm Comm
 }
 
 func (p *Party2) KeyGenPhase4(sid uint64, m3 *KeyGenMsg3) (*KeyGenMsg4, error) {
-
+	//收到X1Pok comm的reveal，验证X1Pok
 	err := p.X1PoKComm.Verify(m3.X1PoK.Bytes(), &m3.X1PoKNonce)
 	if err != nil {
 		return nil, err
@@ -246,6 +244,7 @@ func (p *Party2) KeyGenPhase4(sid uint64, m3 *KeyGenMsg3) (*KeyGenMsg4, error) {
 		return nil, err
 	}
 
+	//验证paillier的PK是合法的
 	err = m3.PProof.Verify()
 	if err != nil {
 		return nil, err
@@ -256,13 +255,20 @@ func (p *Party2) KeyGenPhase4(sid uint64, m3 *KeyGenMsg3) (*KeyGenMsg4, error) {
 		return nil, err
 	}
 
+	//获取x1的paillier加密密文
 	ckey := new(big.Int).SetBytes(m3.ckey)
 	c := new(big.Int).Set(ckey)
 
+	//Lpdl零知识验证
 	p.RPVerifier.ReceiveCtxt(
 		c, m3.PProof.PK, m3.RPCtxtPairs,
 	)
+	err = p.RPVerifier.Verify(m3.RPProofPairs)
+	if err != nil {
+		return nil, err
+	}
 
+	//
 	a, err := rand.Int(rand.Reader, p.cfg.Q)
 	if err != nil {
 		return nil, err
@@ -301,27 +307,16 @@ func (p *Party2) KeyGenPhase4(sid uint64, m3 *KeyGenMsg3) (*KeyGenMsg4, error) {
 	p.ABNonce = abNonce
 
 	return &KeyGenMsg4{
-		//RPChallenge: p.RPVerifier.Challenge,
-		//RPChalNonce: p.RPVerifier.Nonce,
 		CPrime: cPrime,
 		ABComm: abComm,
 	}, nil
 }
 
 type KeyGenMsg5 struct {
-	RPProofPairs []ProofPair
-	AlphaComm    Comm
+	AlphaComm Comm
 }
 
-func (p *Party1) KeyGenPhase5(
-	sid uint64,
-	m4 *KeyGenMsg4) (*KeyGenMsg5, error) {
-
-	proofPairs, err := p.RPProver.Prove()
-	if err != nil {
-		return nil, err
-	}
-
+func (p *Party1) KeyGenPhase5(sid uint64, m4 *KeyGenMsg4) (*KeyGenMsg5, error) {
 	alphaBytes, err := paillier.Decrypt(p.PSK, m4.CPrime.Bytes())
 	if err != nil {
 		return nil, err
@@ -349,8 +344,7 @@ func (p *Party1) KeyGenPhase5(
 	p.ABComm = m4.ABComm
 
 	return &KeyGenMsg5{
-		RPProofPairs: proofPairs,
-		AlphaComm:    alphaComm,
+		AlphaComm: alphaComm,
 	}, nil
 }
 
@@ -360,15 +354,7 @@ type KeyGenMsg6 struct {
 	ABNonce Nonce
 }
 
-func (p *Party2) KeyGenPhase6(
-	sid uint64,
-	m5 *KeyGenMsg5) (*KeyGenMsg6, error) {
-
-	err := p.RPVerifier.Verify(m5.RPProofPairs)
-	if err != nil {
-		return nil, err
-	}
-
+func (p *Party2) KeyGenPhase6(sid uint64, m5 *KeyGenMsg5) (*KeyGenMsg6, error) {
 	p.AlphaComm = m5.AlphaComm
 
 	return &KeyGenMsg6{
@@ -383,10 +369,7 @@ type KeyGenMsg7 struct {
 	AlphaNonce Nonce
 }
 
-func (p *Party1) KeyGenPhase7(
-	sid uint64,
-	m6 *KeyGenMsg6) (*KeyGenMsg7, error) {
-
+func (p *Party1) KeyGenPhase7(sid uint64, m6 *KeyGenMsg6) (*KeyGenMsg7, error) {
 	var data []byte
 	data = append(data, m6.A.Bytes()...)
 	data = append(data, m6.B.Bytes()...)
@@ -407,8 +390,10 @@ func (p *Party1) KeyGenPhase7(
 		return nil, ErrInvalidOTMac
 	}
 
+	//X1x, X1y := p.X1.Coords()
 	X2x, X2y := p.X2.Coords()
-	Qx, Qy := btcec.S256().ScalarMult(X2x, X2y, p.x1[:])
+	Qx, Qy := secpk1.S256().ScalarMult(X2x, X2y, p.x1[:])
+	//Qx, Qy := secpk1.S256().Add(X2x, X2y, X1x, X1y)
 
 	p.Q, err = eckey.NewPublicKeyCoords(Qx, Qy)
 	if err != nil {
@@ -421,21 +406,19 @@ func (p *Party1) KeyGenPhase7(
 	}, nil
 }
 
-func (p *Party2) KeyGenPhase8(
-	sid uint64,
-	m7 *KeyGenMsg7) error {
-
+func (p *Party2) KeyGenPhase8(sid uint64, m7 *KeyGenMsg7) error {
 	err := p.AlphaComm.Verify(m7.AlphaPK[:], &m7.AlphaNonce)
 	if err != nil {
 		return err
 	}
 
 	X1x, X1y := p.X1.Coords()
+	//X2x, X2y := p.X2.Coords()
 
 	// Compute QQ = a*X1 + b*G.
-	aQx, aQy := btcec.S256().ScalarMult(X1x, X1y, p.A.Bytes())
-	Bx, By := btcec.S256().ScalarBaseMult(p.B.Bytes())
-	QQx, QQy := btcec.S256().Add(aQx, aQy, Bx, By)
+	aQx, aQy := secpk1.S256().ScalarMult(X1x, X1y, p.A.Bytes())
+	Bx, By := secpk1.S256().ScalarBaseMult(p.B.Bytes())
+	QQx, QQy := secpk1.S256().Add(aQx, aQy, Bx, By)
 
 	QQ, err := eckey.NewPublicKeyCoords(QQx, QQy)
 	if err != nil {
@@ -447,7 +430,8 @@ func (p *Party2) KeyGenPhase8(
 		return ErrFinalKeyMismatch
 	}
 
-	Qx, Qy := btcec.S256().ScalarMult(X1x, X1y, p.x2[:])
+	Qx, Qy := secpk1.S256().ScalarMult(X1x, X1y, p.x2[:])
+	//Qx, Qy := secpk1.S256().Add(X1x, X1y, X2x, X2y)
 	Q, err := eckey.NewPublicKeyCoords(Qx, Qy)
 	if err != nil {
 		return err

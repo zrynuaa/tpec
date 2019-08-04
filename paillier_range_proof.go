@@ -18,22 +18,8 @@ var (
 )
 
 func NewRangeProofVerifier(q3 *big.Int, accuracy int) (*RangeProofVerifier, error) {
-
-	//challenge, err := randBitSlice(accuracy)
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	//comm, nonce, err := Commit(challenge)
-	//if err != nil {
-	//	return nil, err
-	//}
-
 	return &RangeProofVerifier{
-		Q3: q3,
-		//Challenge: challenge,
-		//Comm:      comm,
-		//Nonce:     nonce,
+		Q3:       q3,
 		Accuracy: accuracy,
 	}, nil
 }
@@ -52,9 +38,7 @@ type RangeProofVerifier struct {
 	PPK       *paillier.PublicKey
 	Q3        *big.Int
 	Challenge BitSlice
-	//Comm      Comm
-	//Nonce     Nonce
-	Accuracy int
+	Accuracy  int
 
 	CtxtPairs []CiphertextPair
 }
@@ -66,8 +50,7 @@ type RangeProofProver struct {
 	Q   *big.Int
 	Q3  *big.Int
 
-	ChallengeComm Comm
-	Accuracy      int
+	Accuracy int
 
 	SecPairs  []SecretPair
 	CtxtPairs []CiphertextPair
@@ -102,7 +85,7 @@ func (b BitSlice) Bit(i int) byte {
 }
 
 func NewRangeProofProver(x *big.Int, r *big.Int, q *big.Int, q3 *big.Int,
-	psk *paillier.PrivateKey, comm Comm, accuracy int) (*RangeProofProver, error) {
+	psk *paillier.PrivateKey, accuracy int) (*RangeProofProver, error) {
 
 	secPairs := NewSecretPairs(accuracy)
 	ctxtPairs := NewCiphertextPairs(accuracy)
@@ -113,15 +96,14 @@ func NewRangeProofProver(x *big.Int, r *big.Int, q *big.Int, q3 *big.Int,
 	}
 
 	prover := &RangeProofProver{
-		X:             x,
-		R:             r,
-		Q:             q,
-		Q3:            q3,
-		PSK:           psk,
-		ChallengeComm: comm,
-		Accuracy:      accuracy,
-		SecPairs:      secPairs,
-		CtxtPairs:     ctxtPairs,
+		X:         x,
+		R:         r,
+		Q:         q,
+		Q3:        q3,
+		PSK:       psk,
+		Accuracy:  accuracy,
+		SecPairs:  secPairs,
+		CtxtPairs: ctxtPairs,
 	}
 
 	var wg sync.WaitGroup
@@ -229,10 +211,6 @@ type RangeProof struct {
 }
 
 func (p *RangeProofProver) Prove() ([]ProofPair, error) {
-	//err := p.ChallengeComm.Verify(challenge, nonce)
-	//if err != nil {
-	//	return nil, err
-	//}
 	var challenge BitSlice = getChallengeFromCtx(p.CtxtPairs, p.Accuracy)
 
 	proofPairs := NewProofPairs(p.Accuracy)
@@ -361,8 +339,7 @@ func getChallengeFromCtx(ctxtPairs []CiphertextPair, accuracy int) []byte {
 	}
 }
 
-func (p *RangeProofVerifier) verifyInstance(
-	i int, proofPair *ProofPair) error {
+func (p *RangeProofVerifier) verifyInstance(i int, proofPair *ProofPair) error {
 
 	lower := p.Q3
 	upper := new(big.Int).Add(p.Q3, p.Q3)

@@ -18,10 +18,7 @@ type PaillierNthRootProof struct {
 	SecBits int
 }
 
-func ProvePaillierNthRoot(
-	pk *paillier.PublicKey,
-	secbits int) (*PaillierNthRootProof, error) {
-
+func ProvePaillierNthRoot(pk *paillier.PublicKey, secbits int) (*PaillierNthRootProof, error) {
 	proof := &PaillierNthRootProof{
 		PK:      pk,
 		U:       new(big.Int),

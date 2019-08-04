@@ -137,9 +137,7 @@ type SignMsg2 struct {
 	R2PoK *DLogPoK
 }
 
-func (p *Party2SignCtx) SignMsgPhase2(
-	sid uint64,
-	m1 *SignMsg1) (*SignMsg2, error) {
+func (p *Party2SignCtx) SignMsgPhase2(sid uint64, m1 *SignMsg1) (*SignMsg2, error) {
 
 	// TODO check sid
 
@@ -168,10 +166,7 @@ type SignMsg3 struct {
 	R1PoKNonce Nonce
 }
 
-func (p *Party1SignCtx) SignMsgPhase3(
-	sid uint64,
-	m2 *SignMsg2) (*SignMsg3, error) {
-
+func (p *Party1SignCtx) SignMsgPhase3(sid uint64, m2 *SignMsg2) (*SignMsg3, error) {
 	err := m2.R2PoK.Verify(signPhase2Msg)
 	if err != nil {
 		return nil, err
@@ -194,10 +189,7 @@ type SignMsg4 struct {
 	c3 *big.Int
 }
 
-func (p *Party2SignCtx) SignMsgPhase4(
-	sid uint64,
-	m3 *SignMsg3) (*SignMsg4, error) {
-
+func (p *Party2SignCtx) SignMsgPhase4(sid uint64, m3 *SignMsg3) (*SignMsg4, error) {
 	m := new(big.Int).SetBytes(p.msg)
 
 	// Sample rho in q^2.
@@ -282,10 +274,7 @@ func (p *Party2SignCtx) SignMsgPhase4(
 	}, nil
 }
 
-func (p *Party1SignCtx) SignMsgPhase5(
-	sid uint64,
-	m4 *SignMsg4) (*btcec.Signature, error) {
-
+func (p *Party1SignCtx) SignMsgPhase5(sid uint64, m4 *SignMsg4) (*btcec.Signature, error) {
 	s1Bytes, err := paillier.Decrypt(p.sk.PSK, m4.c3.Bytes())
 	if err != nil {
 		return nil, err
